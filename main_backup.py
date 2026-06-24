@@ -4,7 +4,6 @@ import subprocess
 from pathlib import Path
 import customtkinter as ctk
 from tkinter import filedialog, messagebox, simpledialog
-from PIL import Image
 
 
 ctk.set_appearance_mode("dark")
@@ -15,14 +14,13 @@ class DownloadSorter:
     def __init__(self, root):
         self.root = root
         self.root.title("Downloads Sorter")
-        self.root.geometry("1300x750")
+        self.root.geometry("1000x650")
 
         self.source_folder = None
         self.files = []
         self.current_index = 0
         self.last_move = None
         self.last_destination = None
-        self.favorite_folders = []
 
         self.extensions = {
             ".png": ctk.BooleanVar(value=True),
@@ -34,25 +32,25 @@ class DownloadSorter:
         }
 
         self.root.bind("<Return>", self.enter_pressed)
+
         self.build_ui()
 
     def build_ui(self):
-        self.sidebar = ctk.CTkFrame(self.root, width=220)
+        self.sidebar = ctk.CTkFrame(self.root, width=260)
         self.sidebar.pack(side="left", fill="y", padx=10, pady=10)
 
         self.main = ctk.CTkFrame(self.root)
-        self.main.pack(side="left", fill="both", expand=True, padx=5, pady=10)
-
-        self.folder_panel = ctk.CTkFrame(self.root, width=260)
-        self.folder_panel.pack(side="right", fill="y", padx=10, pady=10)
+        self.main.pack(side="left", fill="both", expand=True, padx=10, pady=10)
 
         ctk.CTkLabel(self.sidebar, text="Downloads Sorter", font=("Arial", 22, "bold")).pack(pady=20)
 
-        ctk.CTkButton(self.sidebar, text="Select Source Folder", command=self.select_folder).pack(fill="x", padx=15)
-        self.folder_label = ctk.CTkLabel(self.sidebar, text="No folder selected", wraplength=190)
-        self.folder_label.pack(padx=15, pady=15)
+        ctk.CTkButton(self.sidebar, text="Select Source Folder", command=self.select_folder).pack(fill="x", padx=15, pady=8)
+
+        self.folder_label = ctk.CTkLabel(self.sidebar, text="No folder selected", wraplength=220)
+        self.folder_label.pack(padx=15, pady=8)
 
         ctk.CTkLabel(self.sidebar, text="File Types", font=("Arial", 16, "bold")).pack(pady=(25, 8))
+
         for ext, var in self.extensions.items():
             ctk.CTkCheckBox(self.sidebar, text=ext.upper(), variable=var).pack(anchor="w", padx=30, pady=4)
 
@@ -61,21 +59,15 @@ class DownloadSorter:
         self.stats_label = ctk.CTkLabel(self.sidebar, text="No session started")
         self.stats_label.pack(pady=10)
 
-        ctk.CTkLabel(self.main, text="Current File", font=("Arial", 24, "bold")).pack(pady=(20, 5))
+        ctk.CTkLabel(self.main, text="Current File", font=("Arial", 24, "bold")).pack(pady=(25, 10))
 
-        self.count_label = ctk.CTkLabel(self.main, text="No file loaded", font=("Arial", 15))
-        self.count_label.pack(pady=5)
+        self.file_label = ctk.CTkLabel(self.main, text="None", font=("Arial", 18))
+        self.file_label.pack(pady=5)
 
-        self.preview_label = ctk.CTkLabel(self.main, text="Preview will appear here", width=650, height=330)
-        self.preview_label.pack(padx=25, pady=15)
-
-        self.name_entry = ctk.CTkEntry(self.main, height=42, font=("Arial", 16))
+        self.name_entry = ctk.CTkEntry(self.main, height=40, font=("Arial", 16))
         self.name_entry.pack(fill="x", padx=40, pady=10)
 
-        self.extension_label = ctk.CTkLabel(self.main, text="")
-        self.extension_label.pack()
-
-        self.path_label = ctk.CTkLabel(self.main, text="", wraplength=700)
+        self.path_label = ctk.CTkLabel(self.main, text="", wraplength=650)
         self.path_label.pack(pady=5)
 
         self.last_folder_label = ctk.CTkLabel(self.main, text="Last folder: none")
@@ -83,26 +75,23 @@ class DownloadSorter:
 
         ctk.CTkButton(self.main, text="Open File", height=40, command=self.open_current_file).pack(fill="x", padx=40, pady=10)
 
-        row = ctk.CTkFrame(self.main)
-        row.pack(fill="x", padx=40, pady=10)
+        button_row = ctk.CTkFrame(self.main)
+        button_row.pack(fill="x", padx=40, pady=15)
 
-        ctk.CTkButton(row, text="Move To Folder", command=self.move_to_folder).pack(side="left", expand=True, fill="x", padx=5)
-        ctk.CTkButton(row, text="Create Folder + Move", command=self.create_folder_and_move).pack(side="left", expand=True, fill="x", padx=5)
+        ctk.CTkButton(button_row, text="Move To Folder", command=self.move_to_folder).pack(side="left", expand=True, fill="x", padx=5)
+        ctk.CTkButton(button_row, text="Create Folder + Move", command=self.create_folder_and_move).pack(side="left", expand=True, fill="x", padx=5)
 
-        row2 = ctk.CTkFrame(self.main)
-        row2.pack(fill="x", padx=40, pady=10)
+        bottom_row = ctk.CTkFrame(self.main)
+        bottom_row.pack(fill="x", padx=40, pady=10)
 
-        ctk.CTkButton(row2, text="Skip", command=self.skip_file).pack(side="left", expand=True, fill="x", padx=5)
-        ctk.CTkButton(row2, text="Undo", command=self.undo_last_move).pack(side="left", expand=True, fill="x", padx=5)
+        ctk.CTkButton(bottom_row, text="Skip", command=self.next_file).pack(side="left", expand=True, fill="x", padx=5)
+        ctk.CTkButton(bottom_row, text="Undo", command=self.undo_last_move).pack(side="left", expand=True, fill="x", padx=5)
 
-        ctk.CTkLabel(self.main, text="Tip: type a new name, then press ENTER to move to the last used folder.", text_color="gray").pack(pady=10)
-
-        ctk.CTkLabel(self.folder_panel, text="Favorite Folders", font=("Arial", 20, "bold")).pack(pady=20)
-
-        ctk.CTkButton(self.folder_panel, text="+ Add Favorite Folder", command=self.add_favorite_folder).pack(fill="x", padx=15, pady=8)
-
-        self.favorites_frame = ctk.CTkScrollableFrame(self.folder_panel)
-        self.favorites_frame.pack(fill="both", expand=True, padx=15, pady=15)
+        ctk.CTkLabel(
+            self.main,
+            text="Tip: Rename the file, then press ENTER to move it to the last used folder.",
+            text_color="gray"
+        ).pack(pady=20)
 
     def select_folder(self):
         folder = filedialog.askdirectory(title="Select Downloads Folder")
@@ -122,7 +111,7 @@ class DownloadSorter:
             if file.is_file() and file.suffix.lower() in selected_exts
         ]
 
-        self.files.sort(key=lambda file: file.stat().st_mtime)
+        self.files.sort(key=lambda file: file.stat().st_mtime)  # oldest first
         self.current_index = 0
 
         if not self.files:
@@ -130,49 +119,30 @@ class DownloadSorter:
             return
 
         self.show_current_file()
+        self.open_current_file()
 
     def show_current_file(self):
         if self.current_index >= len(self.files):
-            self.count_label.configure(text="Done! No more files.")
+            self.file_label.configure(text="Done! No more files.")
             self.name_entry.delete(0, "end")
-            self.preview_label.configure(text="Finished", image=None)
+            self.path_label.configure(text="")
             self.stats_label.configure(text="Finished")
             return
 
         current = self.files[self.current_index]
-        stem = current.stem
-        ext = current.suffix
 
-        self.count_label.configure(text=f"{self.current_index + 1} of {len(self.files)}")
+        self.file_label.configure(text=f"{self.current_index + 1} of {len(self.files)}")
         self.path_label.configure(text=str(current))
-        self.extension_label.configure(text=f"Extension: {ext}")
         self.stats_label.configure(text=f"Remaining: {len(self.files) - self.current_index}")
 
         self.name_entry.delete(0, "end")
-        self.name_entry.insert(0, stem)
+        self.name_entry.insert(0, current.name)
 
-        self.load_preview(current)
         self.root.after(100, self.focus_name_box)
 
     def focus_name_box(self):
         self.name_entry.focus_set()
         self.name_entry.select_range(0, "end")
-
-    def load_preview(self, file):
-        ext = file.suffix.lower()
-
-        if ext in [".png", ".jpg", ".jpeg"]:
-            try:
-                img = Image.open(file)
-                img.thumbnail((650, 330))
-
-                preview = ctk.CTkImage(light_image=img, dark_image=img, size=img.size)
-                self.preview_label.configure(image=preview, text="")
-                self.preview_label.image = preview
-            except Exception:
-                self.preview_label.configure(image=None, text="Could not load image preview.")
-        else:
-            self.preview_label.configure(image=None, text=f"No preview for {ext.upper()}\nUse Open File.")
 
     def open_current_file(self):
         if self.current_index >= len(self.files):
@@ -183,7 +153,7 @@ class DownloadSorter:
         try:
             if os.name == "nt":
                 os.startfile(file)
-            else:
+            elif os.name == "posix":
                 opener = "open" if os.uname().sysname == "Darwin" else "xdg-open"
                 subprocess.call([opener, file])
         except Exception as e:
@@ -196,11 +166,17 @@ class DownloadSorter:
             messagebox.showinfo("No last folder", "Move one file manually first. Then ENTER will reuse that folder.")
 
     def move_to_folder(self):
+        if self.current_index >= len(self.files):
+            return
+
         destination = filedialog.askdirectory(title="Choose Destination Folder")
         if destination:
             self.rename_and_move_current_file(Path(destination))
 
     def create_folder_and_move(self):
+        if self.current_index >= len(self.files):
+            return
+
         parent = filedialog.askdirectory(title="Choose Parent Folder")
         if not parent:
             return
@@ -211,24 +187,24 @@ class DownloadSorter:
 
         destination = Path(parent) / folder_name
         destination.mkdir(exist_ok=True)
+
         self.rename_and_move_current_file(destination)
 
     def rename_and_move_current_file(self, destination):
-        if self.current_index >= len(self.files):
-            return
-
         current = self.files[self.current_index]
-        new_stem = self.name_entry.get().strip()
+        new_name = self.name_entry.get().strip()
 
-        if not new_stem:
+        if not new_name:
             messagebox.showerror("Error", "Filename cannot be empty.")
             return
 
-        new_name = new_stem + current.suffix
+        if "." not in Path(new_name).name:
+            new_name += current.suffix
+
         target = destination / new_name
 
         if target.exists():
-            messagebox.showerror("Error", "A file with that name already exists.")
+            messagebox.showerror("Error", "A file with that name already exists in the destination.")
             return
 
         try:
@@ -238,15 +214,13 @@ class DownloadSorter:
             self.last_destination = destination
             self.last_folder_label.configure(text=f"Last folder: {destination.name}")
 
-            self.add_favorite_if_missing(destination)
-
-            self.current_index += 1
-            self.show_current_file()
+            self.next_file()
+            self.open_current_file()
 
         except Exception as e:
             messagebox.showerror("Error", f"Could not move file:\n{e}")
 
-    def skip_file(self):
+    def next_file(self):
         self.current_index += 1
         self.show_current_file()
 
@@ -264,31 +238,6 @@ class DownloadSorter:
             self.show_current_file()
         except Exception as e:
             messagebox.showerror("Error", f"Could not undo:\n{e}")
-
-    def add_favorite_folder(self):
-        folder = filedialog.askdirectory(title="Add Favorite Folder")
-        if folder:
-            self.add_favorite_if_missing(Path(folder))
-
-    def add_favorite_if_missing(self, folder):
-        folder = Path(folder)
-
-        if folder not in self.favorite_folders:
-            self.favorite_folders.append(folder)
-            self.refresh_favorites()
-
-    def refresh_favorites(self):
-        for widget in self.favorites_frame.winfo_children():
-            widget.destroy()
-
-        for folder in self.favorite_folders:
-            btn = ctk.CTkButton(
-                self.favorites_frame,
-                text=folder.name,
-                height=45,
-                command=lambda f=folder: self.rename_and_move_current_file(f)
-            )
-            btn.pack(fill="x", pady=6)
 
 
 if __name__ == "__main__":
