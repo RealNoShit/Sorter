@@ -381,25 +381,13 @@ class DownloadSorter:
             return
 
         current = self.files[self.current_index]
-
         new_stem = self.name_entry.get().strip()
 
         if not new_stem:
-            if (
-                self.active_series_prefix
-                and self.active_series_number
-                and self.last_destination
-            ):
-                new_stem, suggested_number = self.get_next_available_series_name(
-                    self.last_destination,
-                    self.active_series_prefix,
-                    self.active_series_number,
-                    current.suffix
-                )
+            self.active_series_prefix = None
+            self.active_series_number = None
 
-                self.active_series_number = suggested_number
-            else:
-                new_stem = current.stem
+            new_stem = current.stem
 
             self.name_entry.delete(0, "end")
             self.name_entry.insert(0, new_stem)
@@ -430,10 +418,7 @@ class DownloadSorter:
                 )
                 return
 
-            messagebox.showerror(
-                "Error",
-                "A file with that name already exists."
-            )
+            messagebox.showerror("Error", "A file with that name already exists.")
             return
 
         try:
@@ -442,9 +427,7 @@ class DownloadSorter:
             self.last_move = (target, current)
             self.last_destination = destination
 
-            self.last_folder_label.configure(
-                text=f"Last folder: {destination.name}"
-            )
+            self.last_folder_label.configure(text=f"Last folder: {destination.name}")
 
             self.add_favorite_if_missing(destination)
             self.save_settings()
@@ -459,10 +442,7 @@ class DownloadSorter:
             self.show_current_file()
 
         except Exception as error:
-            messagebox.showerror(
-                "Error",
-                f"Could not move file:\n{error}"
-            )  
+            messagebox.showerror("Error", f"Could not move file:\n{error}")
 
     def skip_file(self):
         self.current_index += 1
