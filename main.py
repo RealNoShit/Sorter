@@ -2,6 +2,7 @@ import os
 import shutil
 import json
 import subprocess
+import re
 from pathlib import Path
 
 import customtkinter as ctk
@@ -28,6 +29,9 @@ class DownloadSorter:
         self.last_destination = None
         self.favorite_folders = []
         self.preview_size = 330
+
+        self.active_series_prefix = None
+        self.active_series_number = None
 
         self.load_settings()
 
@@ -223,7 +227,19 @@ class DownloadSorter:
         self.stats_label.configure(text=f"Remaining: {len(self.files) - self.current_index}")
 
         self.name_entry.delete(0, "end")
-        self.name_entry.insert(0, current.stem)
+
+        if self.active_series_prefix and self.active_series_number and self.last_destination:
+            suggested_name, suggested_number = self.get_next_available_series_name(
+                self.last_destination,
+                self.active_series_prefix,
+                self.active_series_number,
+                current.suffix
+            )
+
+            self.name_entry.insert(0, suggested_name)
+            self.active_series_number = suggested_number
+        else:
+            self.name_entry.insert(0, current.stem)
 
         self.load_preview(current)
         self.root.after(100, self.focus_name_box)
@@ -242,16 +258,18 @@ class DownloadSorter:
 
         self.save_settings()
 
+    
     def load_preview(self, file):
         extension = file.suffix.lower()
+
+        # Clear old preview first
+        self.preview_label.configure(image=None, text="")
+        self.preview_label.image = None
 
         if extension in [".png", ".jpg", ".jpeg"]:
             try:
                 image = Image.open(file)
-
-                max_width = 700
-                max_height = self.preview_size
-                image.thumbnail((max_width, max_height))
+                image.thumbnail((700, self.preview_size))
 
                 preview = ctk.CTkImage(
                     light_image=image,
@@ -262,13 +280,42 @@ class DownloadSorter:
                 self.preview_label.configure(image=preview, text="")
                 self.preview_label.image = preview
 
-            except Exception:
-                self.preview_label.configure(image=None, text="Could not load image preview.")
+            except Exception as error:
+                self.preview_label.configure(
+                    image=None,
+                    text=f"Could not load image preview.\n{error}"
+                )
+                self.preview_label.image = None
         else:
             self.preview_label.configure(
                 image=None,
                 text=f"No preview for {extension.upper()}\nUse Open File."
             )
+            self.preview_label.image = None
+
+    def parse_series_name(self, name):
+        match = re.fullmatch(r"([a-zA-Z]+)(\d+)", name)
+
+        if not match:
+               return None, None
+
+        prefix = match.group(1)
+        number = int(match.group(2))
+
+        return prefix, number
+
+
+    def get_next_available_series_name(self, folder, prefix, start_number, suffix):
+        number = start_number
+
+        while True:
+           candidate = f"{prefix}{number}"
+           target = Path(folder) / f"{candidate}{suffix}"
+
+           if not target.exists():
+               return candidate, number
+
+           number += 1
 
     def open_current_file(self):
         if self.current_index >= len(self.files):
@@ -331,6 +378,27 @@ class DownloadSorter:
         target = destination / new_name
 
         if target.exists():
+            prefix, number = self.parse_series_name(new_stem)
+
+            if prefix and number:
+                suggested_name, suggested_number = self.get_next_available_series_name(
+                    destination,
+                    prefix,
+                    number + 1,
+                    current.suffix
+                )
+
+                self.name_entry.delete(0, "end")
+                self.name_entry.insert(0, suggested_name)
+                self.active_series_prefix = prefix
+                self.active_series_number = suggested_number
+
+                messagebox.showerror(
+                    "Name already used",
+                    f"{new_name} already exists.\nSuggested next name: {suggested_name}{current.suffix}"
+                )
+                return
+
             messagebox.showerror("Error", "A file with that name already exists.")
             return
 
@@ -344,6 +412,12 @@ class DownloadSorter:
 
             self.add_favorite_if_missing(destination)
             self.save_settings()
+
+            prefix, number = self.parse_series_name(new_stem)
+
+            if prefix and number:
+                self.active_series_prefix = prefix
+                self.active_series_number = number + 1
 
             self.current_index += 1
             self.show_current_file()
