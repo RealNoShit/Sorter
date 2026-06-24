@@ -1,16 +1,12 @@
 @echo off
 
-echo Closing old app if running...
-taskkill /IM "Downloads Sorter.exe" /F 2>nul
+echo Closing apps...
+taskkill /F /IM "Downloads Sorter.exe" 2>nul
+taskkill /F /IM "Downloads Sorter Dev.exe" 2>nul
 
-echo Cleaning old build...
-rmdir /s /q build 2>nul
-rmdir /s /q dist 2>nul
-del *.spec 2>nul
-
-echo Building Downloads Sorter...
-py -m PyInstaller --noconfirm --windowed --name "Downloads Sorter" main.py
+echo Building...
+py -m PyInstaller --noconfirm --windowed --name "Downloads Sorter Dev" main.py
 
 echo.
-echo Build complete!
+echo Done.
 pause
