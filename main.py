@@ -137,6 +137,14 @@ class DownloadSorter:
         self.favorites_frame = ctk.CTkScrollableFrame(self.folder_panel)
         self.favorites_frame.pack(fill="both", expand=True, padx=15, pady=15)
 
+        ctk.CTkButton(
+        self.folder_panel,
+        text="Auto Sort A-Z",
+        command=self.auto_sort_favorites
+
+
+).pack(fill="x", padx=15, pady=8)
+
     def load_settings(self):
         if not SETTINGS_FILE.exists():
             return
@@ -472,6 +480,13 @@ class DownloadSorter:
                 expand=True,
                 padx=4
             )
+
+    def auto_sort_favorites(self):
+        self.favorite_folders.sort(
+             key=lambda folder: folder.name.casefold()
+            )
+        self.refresh_favorites()
+        self.save_settings()
 
 
 if __name__ == "__main__":
