@@ -29,6 +29,7 @@ class DownloadSorter:
         self.last_destination = None
         self.favorite_folders = []
         self.preview_size = 330
+        self.preview_image = None
 
         self.active_series_prefix = None
         self.active_series_number = None
@@ -215,7 +216,8 @@ class DownloadSorter:
         if self.current_index >= len(self.files):
             self.count_label.configure(text="Done! No more files.")
             self.name_entry.delete(0, "end")
-            self.preview_label.configure(text="Finished", image=None)
+            self.preview_image = None
+            self.preview_label.configure(image=None, text="Finished")
             self.stats_label.configure(text="Finished")
             return
 
@@ -262,36 +264,46 @@ class DownloadSorter:
     def load_preview(self, file):
         extension = file.suffix.lower()
 
-        # Clear old preview first
-        self.preview_label.configure(image=None, text="")
-        self.preview_label.image = None
-
         if extension in [".png", ".jpg", ".jpeg"]:
             try:
                 image = Image.open(file)
-                image.thumbnail((700, self.preview_size))
 
-                preview = ctk.CTkImage(
-                    light_image=image,
-                    dark_image=image,
-                    size=image.size
+                width, height = image.size
+                if width * height > 300_000_000:
+                    self.preview_image = None
+                    self.preview_label.configure(
+                        image=None,
+                        text="Image too large for preview.\nUse Open File."
+                    )
+                    return
+
+                image.thumbnail((700, self.preview_size))
+                image_copy = image.copy()
+                image.close()
+
+                self.preview_image = ctk.CTkImage(
+                    light_image=image_copy,
+                    dark_image=image_copy,
+                    size=image_copy.size
                 )
 
-                self.preview_label.configure(image=preview, text="")
-                self.preview_label.image = preview
+                self.preview_label.configure(
+                    image=self.preview_image,
+                    text=""
+                )
 
             except Exception as error:
+                self.preview_image = None
                 self.preview_label.configure(
                     image=None,
                     text=f"Could not load image preview.\n{error}"
                 )
-                self.preview_label.image = None
         else:
+            self.preview_image = None
             self.preview_label.configure(
                 image=None,
                 text=f"No preview for {extension.upper()}\nUse Open File."
             )
-            self.preview_label.image = None
 
     def parse_series_name(self, name):
         match = re.fullmatch(r"([a-zA-Z]+)(\d+)", name)
